@@ -38,7 +38,12 @@ if [[ -f "$PYPROJECT_PATH" ]]; then
     exit 1
   fi
 
-  mapfile -t PY_DEPS < <("$BUILD_ROOT/.venv/bin/python" - "$PYPROJECT_PATH" <<'PY'
+  PY_DEPS=()
+  while IFS= read -r dep; do
+    if [[ -n "$dep" ]]; then
+      PY_DEPS+=("$dep")
+    fi
+  done < <("$BUILD_ROOT/.venv/bin/python" - "$PYPROJECT_PATH" <<'PY'
 import sys
 import pathlib
 
