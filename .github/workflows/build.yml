@@ -1,0 +1,95 @@
+name: build-openusd
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: "Version string used for the release/tag"
+        required: true
+        default: "0.1.0"
+      usd_tag:
+        description: "OpenUSD git reference (tag/branch/commit)"
+        required: true
+        default: "release"
+      build_usd_args:
+        description: "Additional build_usd.py arguments"
+        required: false
+        default: "--no-tests --no-tutorials --python --materialx"
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve versions
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "PACKAGE_VERSION=${{ inputs.package_version }}" >> "$GITHUB_ENV"
+            echo "USD_TAG=${{ inputs.usd_tag }}" >> "$GITHUB_ENV"
+            echo "BUILD_USD_ARGS=${{ inputs.build_usd_args }}" >> "$GITHUB_ENV"
+            echo "RELEASE_TAG=v${{ inputs.package_version }}" >> "$GITHUB_ENV"
+          else
+            ref_name="$GITHUB_REF_NAME"
+            stripped="${ref_name#v}"
+            echo "PACKAGE_VERSION=$stripped" >> "$GITHUB_ENV"
+            echo "USD_TAG=$ref_name" >> "$GITHUB_ENV"
+            echo "BUILD_USD_ARGS=--no-tests --no-tutorials --python --materialx" >> "$GITHUB_ENV"
+            echo "RELEASE_TAG=$ref_name" >> "$GITHUB_ENV"
+          fi
+
+      - name: Show configuration
+        run: |
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION"
+          echo "USD_TAG=$USD_TAG"
+          echo "BUILD_USD_ARGS=$BUILD_USD_ARGS"
+          echo "RELEASE_TAG=$RELEASE_TAG"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          brew update
+          brew install cmake ninja || true
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          uv --version
+
+      - name: Build OpenUSD artifact
+        env:
+          USD_TAG: ${{ env.USD_TAG }}
+          USD_VERSION: ${{ env.PACKAGE_VERSION }}
+          PACKAGE_VERSION: ${{ env.PACKAGE_VERSION }}
+          BUILD_USD_ARGS: ${{ env.BUILD_USD_ARGS }}
+        run: |
+          scripts/build_openusd.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: usd-toolset-${{ env.PACKAGE_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+            dist/*.json
+
+      - name: Publish GitHub release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+            dist/*.json
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: USD Toolset ${{ env.PACKAGE_VERSION }}

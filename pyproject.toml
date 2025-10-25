@@ -1,0 +1,10 @@
+[project]
+name = "build-usd"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14.0"
+dependencies = [
+    "pyopengl>=3.1.10",
+    "pyside6>=6.10.0",
+]
