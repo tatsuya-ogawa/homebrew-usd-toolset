@@ -37,7 +37,7 @@ jobs:
             ref_name="$GITHUB_REF_NAME"
             stripped="${ref_name#v}"
             echo "PACKAGE_VERSION=$stripped" >> "$GITHUB_ENV"
-            echo "USD_TAG=$ref_name" >> "$GITHUB_ENV"
+            echo "USD_TAG=release" >> "$GITHUB_ENV"
             echo "BUILD_USD_ARGS=--no-tests --no-tutorials --python --materialx" >> "$GITHUB_ENV"
             echo "RELEASE_TAG=$ref_name" >> "$GITHUB_ENV"
           fi
