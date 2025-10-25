@@ -24,48 +24,20 @@ else
   popd >/dev/null
 fi
 
-python3 -m venv "$BUILD_ROOT/.venv"
-source "$BUILD_ROOT/.venv/bin/activate"
-pip install --upgrade pip
-
 if [[ -f "$PYPROJECT_PATH" ]]; then
-  if ! "$BUILD_ROOT/.venv/bin/python" -c "import tomllib" >/dev/null 2>&1; then
-    pip install tomli
-  fi
-
   if ! command -v uv >/dev/null 2>&1; then
     echo "uv CLI is required to sync Python dependencies. Install from https://docs.astral.sh/uv/ and re-run." >&2
     exit 1
   fi
 
-  PY_DEPS=()
-  while IFS= read -r dep; do
-    if [[ -n "$dep" ]]; then
-      PY_DEPS+=("$dep")
-    fi
-  done < <("$BUILD_ROOT/.venv/bin/python" - "$PYPROJECT_PATH" <<'PY'
-import sys
-import pathlib
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python <3.11 fallback
-    import tomli as tomllib
-
-path = pathlib.Path(sys.argv[1])
-data = tomllib.loads(path.read_text())
-for dep in data.get("project", {}).get("dependencies", []):
-    dep = dep.strip()
-    if dep:
-        print(dep)
-PY
-)
-
-  if ((${#PY_DEPS[@]})); then
-    echo "Installing Python build dependencies via uv: ${PY_DEPS[*]}"
-    uv pip install --python "$BUILD_ROOT/.venv/bin/python" "${PY_DEPS[@]}"
-  fi
+  echo "Syncing Python project dependencies with uv into $BUILD_ROOT/.venv"
+  UV_PROJECT_ENVIRONMENT="$BUILD_ROOT/.venv" uv sync
+else
+  python3 -m venv "$BUILD_ROOT/.venv"
 fi
+
+source "$BUILD_ROOT/.venv/bin/activate"
+pip install --upgrade pip
 
 pushd "$BUILD_ROOT/OpenUSD" >/dev/null
 python3 build_scripts/build_usd.py $BUILD_USD_ARGS "$INSTALL_PREFIX"
