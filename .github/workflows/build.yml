@@ -60,13 +60,7 @@ jobs:
           brew install cmake ninja || true
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          if [[ -f "$HOME/.local/bin/env" ]]; then
-            source "$HOME/.local/bin/env"
-          fi
-          uv --version
+        uses: astral-sh/setup-uv@v6
 
       - name: Build OpenUSD artifact
         env:
