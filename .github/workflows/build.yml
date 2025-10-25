@@ -62,7 +62,10 @@ jobs:
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if [[ -f "$HOME/.local/bin/env" ]]; then
+            source "$HOME/.local/bin/env"
+          fi
           uv --version
 
       - name: Build OpenUSD artifact
