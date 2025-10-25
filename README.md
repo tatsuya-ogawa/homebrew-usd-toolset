@@ -1,48 +1,50 @@
 # homebrew-usd-toolset
 
-Homebrew tap template for distributing prebuilt OpenUSD binaries produced by GitHub Actions. Run the workflow to compile Pixar's OpenUSD with `build_usd.py`, upload the resulting tarball to a GitHub Release, and point the Formula at that asset so end users can `brew install` the toolset.
+Homebrew tap template for distributing prebuilt OpenUSD binaries generated via GitHub Actions. Run the workflow to compile Pixar's OpenUSD with `build_usd.py`, upload the resulting tarball to a GitHub Release, and point the formula at that asset so end users can `brew install` the toolset.
 
-## 背景と前提
-- OpenUSD は公式リポジトリが提供する `build_usd.py` スクリプトで依存関係を含めたフルビルドが可能です。このスクリプトは必要なサードパーティをダウンロードし、指定したインストールディレクトリに USD コアや Imaging を配置します。
-- macOS では Xcode Command Line Tools と CMake さえあれば `python OpenUSD/build_scripts/build_usd.py <install-dir>` でビルドできます。
-- このリポジトリはそのビルド手順を GitHub Actions で自動化し、成果物を Homebrew tap として配布する雛形です。
+## Background
+- OpenUSD ships with `build_usd.py`, a script that downloads required third-party libraries and installs the USD core/imaging stack into a prefix you specify.
+- On macOS, Xcode Command Line Tools plus CMake are enough to run `python OpenUSD/build_scripts/build_usd.py <install-dir>`.
+- This repository automates that process in CI and packages the result as a Homebrew tap.
 
-## リポジトリ構成
-- `Formula/usd-toolset.rb` — Homebrew formula テンプレート。GitHub Release の tarball URL と `sha256` を埋めれば `brew install tatsuya-ogawa/usd-toolset/usd-toolset` で配布できます。
-- `scripts/build_openusd.sh` — OpenUSD を指定タグでクローンし `build_usd.py` を実行、`dist/` 以下に tarball / SHA256 / JSON manifest を生成します。`pyproject.toml` があれば `uv pip install` で依存関係を同期します。
-- `scripts/update_formula.sh` — リリース URL と SHA256 を手早く Formula に反映する小さなヘルパー。
-- `.github/workflows/build.yml` — macOS runner 上で上記スクリプトを実行し、Artifacts / Releases に成果物をアップロードするワークフロー。
-- `pyproject.toml` — `uv` で解決する Python 依存関係 (ここでは PyOpenGL / PySide6) を定義。
+## Repository Layout
+- `Formula/usd-toolset.rb` — Homebrew formula template. Populate the tarball `url` and `sha256` with your GitHub Release asset, then users can install via `brew install tatsuya-ogawa/usd-toolset/usd-toolset`.
+- `scripts/build_openusd.sh` — Clones OpenUSD at the requested tag, runs `build_usd.py`, and writes tarball/SHA256/JSON manifests under `dist/`. If `pyproject.toml` exists, it uses `uv sync` to materialize the Python environment before invoking the build.
+- `scripts/update_formula.sh` — Small helper that rewrites the formula metadata with a new version, URL, and SHA.
+- `.github/workflows/build.yml` — macOS workflow that executes the build script, uploads artifacts, and publishes release assets.
+- `pyproject.toml` — Declares Python dependencies (PyOpenGL, PySide6) resolved via `uv`.
 
-## GitHub Actions でのビルド
-1. **トリガー**
-   - タグ `v*` を push すると自動実行し、同名タグを Release 名に使います。
-   - もしくは `workflow_dispatch` から `package_version` (例: `0.1.0`), `usd_tag` (例: `release` や `v25.08`) を入力して手動実行。
-2. **依存関係** — ランナーで `brew install cmake ninja` と `uv` インストールを行い、`scripts/build_openusd.sh` が仮想環境を作成して `pyproject.toml` の依存関係 (PyOpenGL / PySide6) を `uv pip install --python <venv>` で同期します。必要なら `build_usd_args` 入力で上書きできます。
-3. **成果物** — `dist/usd-toolset-<version>-<os>-<arch>.tar.gz` と `.sha256`, `.json` を artifact として保存し、タグ実行時は GitHub Release に添付します。
+## Building in GitHub Actions
+1. **Triggers**
+   - Pushing a tag matching `v*` runs the workflow automatically and names the release after that tag.
+   - Manual dispatch (`workflow_dispatch`) accepts `package_version`, `usd_tag`, and optional `build_usd_args` inputs.
+2. **Dependencies**
+   - The workflow installs CMake/Ninja via Homebrew, installs `uv`, and calls `scripts/build_openusd.sh`. The script syncs the `pyproject.toml` environment into `.build/.venv` with `uv sync` so PyOpenGL/PySide6 are present for the USD build.
+3. **Artifacts**
+   - Outputs land in `dist/usd-toolset-<version>-<os>-<arch>.tar.gz` plus accompanying `.sha256` and `.json`. Tag-triggered runs also upload these files to the GitHub Release.
 
-## リリース〜Formula 更新手順
-1. ワークフロー完了後、`dist/*.sha256` のハッシュとリリース URL を確認。
-2. ローカルで `./scripts/update_formula.sh --version <semver> --url <release-tarball-url> --sha256 <hash>` を実行。
-3. `Formula/usd-toolset.rb` をコミット・プッシュ。Homebrew 利用者は `brew update` 後にインストールできます。
+## Release & Formula Update Flow
+1. After the workflow finishes, record the tarball URL and SHA256 from `dist/*.sha256`.
+2. Run `./scripts/update_formula.sh --version <semver> --url <release-tarball-url> --sha256 <hash>` locally.
+3. Commit and push `Formula/usd-toolset.rb` so tap users can `brew update` and install.
 
-## ローカルで試す
+## Try Locally
 ```bash
 USD_TAG=release PACKAGE_VERSION=0.1.0 scripts/build_openusd.sh
 ```
-- 生成される tarball は `dist/` に配置されます。
-- `BUILD_USD_ARGS` 環境変数で `build_usd.py` へ任意のフラグを渡せます (例: `--no-usdview --build-variant release`).
-- 事前に [uv](https://docs.astral.sh/uv/) をインストールし、`pyproject.toml` の依存関係が同期できるようにしてください。
+- Artifacts appear under `dist/`.
+- Override `build_usd.py` flags by setting `BUILD_USD_ARGS` (for example, `--no-usdview --build-variant release`).
+- Install [uv](https://docs.astral.sh/uv/) ahead of time so the `pyproject.toml` dependencies can sync successfully.
 
-## Homebrew での利用例
+## Homebrew Usage Example
 ```bash
 brew tap tatsuya-ogawa/usd-toolset https://github.com/tatsuya-ogawa/homebrew-usd-toolset.git
 brew install usd-toolset
 usdcat --help
 ```
-※ 初回は Formula の `sha256` と `url` を実際のリリースに合わせて更新してから。
+Make sure the formula's `url` and `sha256` fields point to a published release before tapping.
 
-## 今後の拡張アイデア
-1. Linux / Windows 用の追加ジョブやユニバーサルバイナリの結合。
-2. 成果物のサイニングと SBOM 生成。
-3. Formula の自動更新 (GitHub Actions で `update_formula.sh` を実行し PR 作成)。
+## Future Enhancements
+1. Add Linux/Windows jobs or merge multiple macOS architectures into a single universal binary.
+2. Sign release artifacts and emit SBOMs.
+3. Automate formula updates by having GitHub Actions run `update_formula.sh` and open pull requests.
