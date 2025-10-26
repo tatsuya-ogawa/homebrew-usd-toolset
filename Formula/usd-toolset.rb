@@ -8,12 +8,12 @@ class UsdToolset < Formula
   on_macos do
     on_intel do
       url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v#{version}/usd-toolset-#{version}-macOS-X64.tar.gz"
-      sha256 "REPLACE_WITH_INTEL_SHA256"
+      sha256 "3f2d12abc85324dffd7b4de8f6d6b5390e5ae4be050034c3d3eeda87e3aadfdc"
     end
 
     on_arm do
       url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v#{version}/usd-toolset-#{version}-macOS-ARM64.tar.gz"
-      sha256 "5efd801c781217fde4bb00cbefa17ea0e4f435fdb1bfec38489a34313676d1eb"
+      sha256 "30d86b2b3528678844da9de31571bf877fc92a24dfbc0790e121756493a03c96"
     end
   end
 
