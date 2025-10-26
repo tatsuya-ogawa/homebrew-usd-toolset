@@ -153,10 +153,32 @@ jobs:
           PY
       - name: Update formula file
         run: |
-          scripts/update_formula.sh \
-            --version "$PACKAGE_VERSION" \
-            --intel-sha "${{ steps.shas.outputs.intel_sha }}" \
-            --arm-sha "${{ steps.shas.outputs.arm_sha }}"
+          python3 <<'PY' "$PACKAGE_VERSION" "${{ steps.shas.outputs.intel_sha }}" "${{ steps.shas.outputs.arm_sha }}"
+import sys
+import pathlib
+import re
+
+package_version, intel_sha, arm_sha = sys.argv[1:4]
+path = pathlib.Path("Formula/usd-toolset.rb")
+text = path.read_text()
+
+version_pattern = r'(  version ")([^"]+)(")'
+text, count = re.subn(version_pattern, lambda m: f'{m.group(1)}{package_version}{m.group(3)}', text, count=1)
+if count != 1:
+    raise SystemExit("Failed to update version in formula")
+
+pattern_intel = r'(macOS-X64\.tar\.gz"\n\s+sha256 ")(.*?)(")'
+text, count = re.subn(pattern_intel, lambda m: f'{m.group(1)}{intel_sha}{m.group(3)}', text, count=1)
+if count != 1:
+    raise SystemExit("Failed to update Intel sha256 block")
+
+pattern_arm = r'(macOS-ARM64\.tar\.gz"\n\s+sha256 ")(.*?)(")'
+text, count = re.subn(pattern_arm, lambda m: f'{m.group(1)}{arm_sha}{m.group(3)}', text, count=1)
+if count != 1:
+    raise SystemExit("Failed to update ARM sha256 block")
+
+path.write_text(text)
+PY
 
       - name: Commit formula update
         env:
