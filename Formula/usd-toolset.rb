@@ -7,13 +7,13 @@ class UsdToolset < Formula
 
   on_macos do
     on_intel do
-      url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v0.1.0/usd-toolset-0.1.0-macOS-X64.tar.gz"
+      url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v#{version}/usd-toolset-#{version}-macOS-X64.tar.gz"
       sha256 "REPLACE_WITH_INTEL_SHA256"
     end
 
     on_arm do
-      url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v0.1.0/usd-toolset-0.1.0-macOS-ARM64.tar.gz"
-      sha256 "REPLACE_WITH_ARM_SHA256"
+      url "https://github.com/tatsuya-ogawa/homebrew-usd-toolset/releases/download/v#{version}/usd-toolset-#{version}-macOS-ARM64.tar.gz"
+      sha256 "5efd801c781217fde4bb00cbefa17ea0e4f435fdb1bfec38489a34313676d1eb"
     end
   end
 
@@ -23,7 +23,7 @@ class UsdToolset < Formula
   end
 
   def install
-    prefix.install Dir["*"]
+    bin.install Dir["bin/*"]
   end
 
   test do

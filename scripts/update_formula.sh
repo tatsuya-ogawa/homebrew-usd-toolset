@@ -5,14 +5,14 @@ FORMULA_PATH="${FORMULA_PATH:-Formula/usd-toolset.rb}"
 
 usage() {
   cat <<USAGE
-Usage: $0 --version <semver> --url <tarball_url> --sha256 <sha>
-Updates the formula metadata in $FORMULA_PATH.
+Usage: $0 --version <semver> --intel-sha <sha> --arm-sha <sha>
+Updates the version and macOS-specific SHA256 values inside $FORMULA_PATH.
 USAGE
 }
 
 VERSION=""
-URL=""
-SHA256=""
+INTEL_SHA=""
+ARM_SHA=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -20,12 +20,12 @@ while [[ $# -gt 0 ]]; do
       VERSION="$2"
       shift 2
       ;;
-    --url)
-      URL="$2"
+    --intel-sha)
+      INTEL_SHA="$2"
       shift 2
       ;;
-    --sha256)
-      SHA256="$2"
+    --arm-sha)
+      ARM_SHA="$2"
       shift 2
       ;;
     -h|--help)
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$VERSION" || -z "$URL" || -z "$SHA256" ]]; then
+if [[ -z "$VERSION" || -z "$INTEL_SHA" || -z "$ARM_SHA" ]]; then
   echo "Missing required arguments" >&2
   usage >&2
   exit 1
@@ -51,8 +51,43 @@ if [[ ! -f "$FORMULA_PATH" ]]; then
   exit 1
 fi
 
-perl -0pi -e "s/(  version \?)\".*\"/\${1}\"$VERSION\"/" "$FORMULA_PATH"
-perl -0pi -e "s/(  url )\".*\"/\${1}\"$URL\"/" "$FORMULA_PATH"
-perl -0pi -e "s/(  sha256 )\".*\"/\${1}\"$SHA256\"/" "$FORMULA_PATH"
+python3 <<'PY' "$FORMULA_PATH" "$VERSION" "$INTEL_SHA" "$ARM_SHA"
+import sys
+import pathlib
+import re
+
+path = pathlib.Path(sys.argv[1])
+version, intel_sha, arm_sha = sys.argv[2:5]
+text = path.read_text()
+
+version_pattern = r'(  version ")([^"]+)(")'
+
+def repl_version(match):
+    return f"{match.group(1)}{version}{match.group(3)}"
+
+if not re.search(version_pattern, text):
+    raise SystemExit("Could not locate version line in formula")
+text = re.sub(version_pattern, repl_version, text, count=1)
+
+intel_pattern = r'(macOS-X64\.tar\.gz"\n\s+sha256 ")(.*?)(")'
+
+def repl_intel(match):
+    return f"{match.group(1)}{intel_sha}{match.group(3)}"
+
+text, count = re.subn(intel_pattern, repl_intel, text, count=1)
+if count != 1:
+    raise SystemExit("Failed to update Intel sha256 block")
+
+arm_pattern = r'(macOS-ARM64\.tar\.gz"\n\s+sha256 ")(.*?)(")'
+
+def repl_arm(match):
+    return f"{match.group(1)}{arm_sha}{match.group(3)}"
+
+text, count = re.subn(arm_pattern, repl_arm, text, count=1)
+if count != 1:
+    raise SystemExit("Failed to update ARM sha256 block")
+
+path.write_text(text)
+PY
 
 echo "Updated $FORMULA_PATH" >&2
