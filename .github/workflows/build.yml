@@ -130,28 +130,27 @@ jobs:
         id: shas
         run: |
           python3 <<'PY' >> "$GITHUB_OUTPUT"
-import json
-import pathlib
+          import json
+          import pathlib
 
-intel = None
-arm = None
+          intel = None
+          arm = None
 
-for json_path in pathlib.Path("artifacts").rglob("*.json"):
-    data = json.loads(json_path.read_text())
-    artifact = data.get("artifact", "")
-    sha = data.get("sha256")
-    if "X64" in artifact:
-        intel = sha
-    elif "ARM64" in artifact:
-        arm = sha
+          for json_path in pathlib.Path("artifacts").rglob("*.json"):
+              data = json.loads(json_path.read_text())
+              artifact = data.get("artifact", "")
+              sha = data.get("sha256")
+              if "X64" in artifact:
+                  intel = sha
+              elif "ARM64" in artifact:
+                  arm = sha
 
-if not intel or not arm:
-    raise SystemExit("Missing SHA256 values in artifacts")
+          if not intel or not arm:
+              raise SystemExit("Missing SHA256 values in artifacts")
 
-print(f"intel_sha={intel}")
-print(f"arm_sha={arm}")
-PY
-
+          print(f"intel_sha={intel}")
+          print(f"arm_sha={arm}")
+          PY
       - name: Update formula file
         run: |
           scripts/update_formula.sh \
