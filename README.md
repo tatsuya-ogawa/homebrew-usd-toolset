@@ -11,7 +11,7 @@ Homebrew tap template for distributing prebuilt OpenUSD binaries generated via G
 - `Formula/usd-toolset.rb` — Homebrew formula template. Populate the tarball `url` and `sha256` with your GitHub Release asset, then users can install via `brew install tatsuya-ogawa/usd-toolset/usd-toolset`.
 - `scripts/build_openusd.sh` — Clones OpenUSD at the requested tag, runs `build_usd.py`, and writes tarball/SHA256/JSON manifests under `dist/`. If `pyproject.toml` exists, it uses `uv sync` to materialize the Python environment before invoking the build.
 - `scripts/update_formula.sh` — Small helper that rewrites the formula metadata with a new version, URL, and SHA.
-- `.github/workflows/build.yml` — macOS workflow that executes the build script, uploads artifacts, and publishes release assets.
+- `.github/workflows/build.yml` — Dual-runner macOS workflow (macos-13 Intel + macos-14 Apple Silicon) that executes the build script, uploads artifacts, and publishes release assets.
 - `pyproject.toml` — Declares Python dependencies (PyOpenGL, PySide6) resolved via `uv`.
 
 ## Building in GitHub Actions
@@ -19,9 +19,9 @@ Homebrew tap template for distributing prebuilt OpenUSD binaries generated via G
    - Pushing a tag matching `v*` runs the workflow automatically and names the release after that tag.
    - Manual dispatch (`workflow_dispatch`) accepts `package_version`, `usd_tag`, and optional `build_usd_args` inputs.
 2. **Dependencies**
-   - The workflow installs CMake/Ninja via Homebrew, installs `uv`, and calls `scripts/build_openusd.sh`. The script syncs the `pyproject.toml` environment into `.build/.venv` with `uv sync` so PyOpenGL/PySide6 are present for the USD build.
+   - Each runner (`macos-13` x86_64 and `macos-14` arm64) installs CMake/Ninja via Homebrew, installs `uv`, and calls `scripts/build_openusd.sh`. The script syncs the `pyproject.toml` environment into `.build/.venv` with `uv sync` so PyOpenGL/PySide6 are present for the USD build.
 3. **Artifacts**
-   - Outputs land in `dist/usd-toolset-<version>-<os>-<arch>.tar.gz` plus accompanying `.sha256` and `.json`. Tag-triggered runs also upload these files to the GitHub Release.
+   - Outputs land in `dist/usd-toolset-<version>-<os>-<arch>.tar.gz` plus accompanying `.sha256` and `.json` for every architecture. Tag-triggered runs also upload these files to the GitHub Release.
 
 ## Release & Formula Update Flow
 1. After the workflow finishes, record the tarball URL and SHA256 from `dist/*.sha256`.
