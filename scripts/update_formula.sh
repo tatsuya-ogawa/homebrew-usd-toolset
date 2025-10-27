@@ -51,7 +51,7 @@ if [[ ! -f "$FORMULA_PATH" ]]; then
   exit 1
 fi
 
-python3 <<'PY' "$FORMULA_PATH" "$VERSION" "$INTEL_SHA" "$ARM_SHA"
+python3 - "$FORMULA_PATH" "$VERSION" "$INTEL_SHA" "$ARM_SHA" <<'PY'
 import sys
 import pathlib
 import re
